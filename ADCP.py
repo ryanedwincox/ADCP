@@ -42,9 +42,6 @@ import select
 from logger import Logger   #logger.py is in Ryan's python $path C:/python27
 from threading import Thread
 
-# create an output logger file handler
-# myFileHandler = Logger("TMPSF_10.180.80.169_2101_")  #worked here, now moved to _Recv, with basename passed from command line to _Direct to _Recv
-
 class _Recv(Thread):
     """
     Thread to receive and print data.
