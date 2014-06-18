@@ -42,11 +42,8 @@ import select
 from logger import Logger   #logger.py is in Ryan's python $path C:/python27
 from threading import Thread
 
+# Thread to receive and print data.
 class _Recv(Thread):
-    """
-    Thread to receive and print data.
-    """
-
     def __init__(self, conn, basename):
         Thread.__init__(self, name="_Recv")
         self._conn = conn
@@ -83,38 +80,87 @@ class _Recv(Thread):
                     
             sys.stdout.flush()
 
-
+# Main program
 class _Direct(object):
-    """
-    Main program.
-    """
-
-    def __init__(self, host, port, basename):
-        """
-        Establishes the connection and starts the receiving thread.
-        """
+    # Establishes the connection and starts the receiving thread.
+    def __init__(self, host, port, basename, configuration):
         print "### connecting to %s:%s" % (host, port)  
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.connect((host, port))
         self._bt = _Recv(self._sock, basename)
         self._bt.start()
         
-        # TODO: wake and connect to instrument
-        # TODO: print status messages
-        # TODO: reconfigure to default settings and then set custom settings
-        # TODO: reconfigure based on different configurations
-
+        # wake and connect to instrument
+        self.send('+++') # wakes instrument **** can you send a string?
+        time.sleep(0.5)
         
+        # initialize system settings
+        self.send('CR1') # 'CR1' factory default, 'CR0' user default
+        time.sleep(0.5)
+        
+        # print status messages
+        self.send('PS0') # output system configuration
+        time.sleep(0.5)
+        self.send('AC') # output active calibration data
+        time.sleep(0.5)
+        self.send('FD') # output fault log **** useful??
+        time.sleep(0.5)
+        self.send('PT200') # 'PT200' runs all tests.  'PT300' runs all tests continuously
+        
+        # Configures system settings based on specified configuration
+        # TODO: confirm configuration names and settings
+        if configuration == 'CONF1':
+            self.send('WF0176')
+            time.sleep(0.5)
+            self.send('WN22')
+            time.sleep(0.5)
+            self.send('WS400')
+            time.sleep(0.5)
+        elif configuration == 'CONF2':
+            self.send('WN40')
+            time.sleep(0.5)
+            self.send('WS400')
+            time.sleep(0.5)
+        elif configuration == 'CONF3':
+            self.send('WN40')
+            time.sleep(0.5)
+            self.send('WS1600')
+            time.sleep(0.5)
+        elif configuration == 'CONF4':
+            self.send('WF0352')
+            time.sleep(0.5)
+            self.send('WN50')
+            time.sleep(0.5)
+        elif configuration == 'CONF5':
+            self.send('WF0352')
+            time.sleep(0.5)
+            self.send('WN30')
+            time.sleep(0.5)
+        elif configuration == 'CONF6':
+            self.send('WN28')
+            time.sleep(0.5) 
+            self.send('WS3200')
+            time.sleep(0.5)
+        elif configuration == 'CONF7':
+            self.send('WF0352')
+            time.sleep(0.5)
+            self.send('WN50')
+            time.sleep(0.5) 
+        elif configuration == 'CONF8':
+            self.send('WF0352')
+            time.sleep(0.5)
+            self.send('WN30')
+            time.sleep(0.5) 
+            
         # TODO: specify user commands
         print "### Status checks complete, but not verified"
+        print "### To run in water test enter 'test'"
         print "### To erase memory and reset sampling enter 'clear'"
         print "### To initialize sampling mode enter 'sample,X' where X is sample period in seconds"
         print "### To close socket and exit program enter 'q'"
-        
+    
+    # Dispatches user commands.    
     def run(self):
-        """
-        Dispatches user commands.
-        """
         while True:
         
             cmd = sys.stdin.readline()
@@ -126,8 +172,14 @@ class _Direct(object):
                 print "### exiting"
                 break
             
-            # TODO: add commands as needed
-            elif cmd== "other":
+            # TODO: add commands??
+            elif cmd== "other??":
+                pass # ****
+                
+            elif cmd== "test":
+                print "start test"
+                self.send('PT200')
+                time.sleep(0.5)
                 
             elif cmd1[0] == "sample":
                 # TODO: send sampling commands
@@ -150,27 +202,40 @@ class _Direct(object):
         return c
 
 # main method.  Accepts input parameters runs the program
-# TODO: add configuration parameter
+# default host: 'localhost'
+# default port: no default
+# default basename: "INSTNAME_IPADDR_PORT"
+# default configuration: CONF1
 if __name__ == '__main__':
     if len(sys.argv) <= 1:
         print USAGE
         exit()
-
+    
+    # TODO: may be possible to do this more cleanly with default values in the init function of direct
     if len(sys.argv) == 2:
         host = 'localhost'
         port = int(sys.argv[1])
         basename = "INSTNAME_IPADDR_PORT"
+        configuration = "CONF1"
         
     if len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
         basename = "INSTNAME_IPADDR_PORT"
+        configuration = "CONF1"
+        
+    if len(sys.argv) == 4:
+        host = sys.argv[1]
+        port = int(sys.argv[2])
+        basename = sys.argv[3]
+        configuration = "CONF1"
         
     else:
         host = sys.argv[1]
         port = int(sys.argv[2])
         basename = sys.argv[3]
+        configuration = sys.argv[4] 
 
-    direct = _Direct(host, port, basename)
+    direct = _Direct(host, port, basename, configuration)
     direct.run()
 
