@@ -4,18 +4,18 @@ USAGE = """
 
 GP- This has been modified to make it a generic raw socket connection, with <CR><LF>
 
-This program allows direct user interaction with the TMPSF instrument via a socket.
+This program allows direct user interaction with an ADCP instrument via a socket.
 
 
 USAGE:
-    TMPSF_logged_2.py address port basename # connect to instrument on address:port, with logger basename
-    TMPSF_logged_2.py address port basename # connect to instrument on address:port, with logger defaulted to generic basename
-    TMPSF_logged_2.py port              # connect to instrument on localhost:port, with logger defaulted to generic basename
+    python ADCP.py address port basename # connect to instrument on address:port, with logger basename
+    python ADCP.py address port # connect to instrument on address:port, with logger defaulted to generic basename
+    python ADCP.py port              # connect to instrument on localhost:port, with logger defaulted to generic basename
     
     
 
 Example:
-    TMPSF_logged_2.py 10.180.80.169 2101 TMPSF_10.180.80.169_2101
+    python ADCP.py 10.180.80.169 2101 ADCP.180.80.169_2101
     
 
 It establishes a TCP connection with the provided service, starts a thread to
@@ -24,8 +24,8 @@ dispatch commands from the user. In this "logged" version the script stops any s
 initializes a new sampling program.
 
 Commands accepted: 
-    "clear" - erases flash memory and resets sampling mode
-    "sample,X" - initializes sampling with a period defined by "X" in seconds (must be less than 100)
+    "initialize,[configuration]" - reconfigures instrument to desired configuration.  Configurations include: K101
+    "sample" - initializes sampling
     "q" - closes TCP connection and exits program
 
 """
@@ -83,9 +83,9 @@ class _Recv(Thread):
 # Main program
 class _Direct(object):
     # Establishes the connection and starts the receiving thread.
-    def __init__(self, host, port, basename, configuration):
+    def __init__(self, host, port, basename):
         print "### connecting to %s:%s" % (host, port)  
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self._sock.connect((host, port))
         self._bt = _Recv(self._sock, basename)
         self._bt.start()
@@ -95,7 +95,9 @@ class _Direct(object):
         time.sleep(0.5)
         
         # initialize system settings
-        self.send('CR1') # 'CR1' factory default, 'CR0' user default
+        # must be first command
+        # calls previous settings until the instrument is reinitialized ****
+        self.send('CR0') # 'CR1' factory default, 'CR0' user default
         time.sleep(0.5)
         
         # print status messages
@@ -106,57 +108,13 @@ class _Direct(object):
         self.send('FD') # output fault log **** useful??
         time.sleep(0.5)
         self.send('PT200') # 'PT200' runs all tests.  'PT300' runs all tests continuously
-        
-        # Configures system settings based on specified configuration
-        # TODO: confirm configuration names and settings
-        if configuration == 'CONF1':
-            self.send('WF0176')
-            time.sleep(0.5)
-            self.send('WN22')
-            time.sleep(0.5)
-            self.send('WS400')
-            time.sleep(0.5)
-        elif configuration == 'CONF2':
-            self.send('WN40')
-            time.sleep(0.5)
-            self.send('WS400')
-            time.sleep(0.5)
-        elif configuration == 'CONF3':
-            self.send('WN40')
-            time.sleep(0.5)
-            self.send('WS1600')
-            time.sleep(0.5)
-        elif configuration == 'CONF4':
-            self.send('WF0352')
-            time.sleep(0.5)
-            self.send('WN50')
-            time.sleep(0.5)
-        elif configuration == 'CONF5':
-            self.send('WF0352')
-            time.sleep(0.5)
-            self.send('WN30')
-            time.sleep(0.5)
-        elif configuration == 'CONF6':
-            self.send('WN28')
-            time.sleep(0.5) 
-            self.send('WS3200')
-            time.sleep(0.5)
-        elif configuration == 'CONF7':
-            self.send('WF0352')
-            time.sleep(0.5)
-            self.send('WN50')
-            time.sleep(0.5) 
-        elif configuration == 'CONF8':
-            self.send('WF0352')
-            time.sleep(0.5)
-            self.send('WN30')
-            time.sleep(0.5) 
+
             
-        # TODO: specify user commands
+        # print possible user commands
         print "### Status checks complete, but not verified"
-        print "### To run in water test enter 'test'"
-        print "### To erase memory and reset sampling enter 'clear'"
-        print "### To initialize sampling mode enter 'sample,X' where X is sample period in seconds"
+        print "### To configure instrument enter 'initialize,[configuration]'"
+        print "### Supported configurations are: 'K101'"
+        print "### To start sampling enter 'sample'"
         print "### To close socket and exit program enter 'q'"
     
     # Dispatches user commands.    
@@ -168,22 +126,63 @@ class _Direct(object):
             cmd = cmd.strip()
             cmd1 = cmd.split(",")
             
-            if cmd=="q":
+            if cmd[0] == "q":
                 print "### exiting"
                 break
             
-            # TODO: add commands??
-            elif cmd== "other??":
-                pass # ****
+            # initializes instrument factory default and then to user specified configuration
+            elif cmd[0] == "initialize":
+                print "### initializing"
                 
-            elif cmd== "test":
-                print "start test"
-                self.send('PT200')
+                # initialize system settings
+                self.send('CR1') # 'CR1' factory default, 'CR0' user default
                 time.sleep(0.5)
                 
+                # if no configuration specified print options
+                if len(cmd1) != 2:
+                    print "### must specify configuration.  Enter 'initialize,[configuration]'"
+                    print "### Supported configurations are: 'K101'"
+        
+                # Configures system settings based on specified configuration
+                # TODO: confirm configuration settings
+                if cmd[1] == 'B104':
+                    pass 
+                elif configuration == 'I103':
+                    pass
+                elif configuration == 'E101':
+                    pass
+                elif configuration == 'D102':
+                    pass
+                elif configuration == 'K101':
+                    print "### configuring K101"
+                    self.send('CF11110') # Flow control
+                    time.sleep(0.5)
+                    self.send('CL0') # Don't sleep between pings
+                    time.sleep(0.5)
+                    self.send('ED8000') # transducer depth
+                    time.sleep(0.5)
+                    self.send('EX00111') # coordinate transformation
+                    time.sleep(0.5)
+                    self.send('TE00:00:00.00') # Time per ensemble
+                    time.sleep(0.5)
+                    self.send('WN30') # Number of depth cells
+                    time.sleep(0.5)
+                    self.send('WP1') # Pings per ensemble
+                    time.sleep(0.5)
+                    self.send('WS3200') # Depth cell size
+                    time.sleep(0.5)
+                elif configuration == 'E301':
+                    pass
+                elif configuration == 'D302':
+                    pass 
+                                 
             elif cmd1[0] == "sample":
-                # TODO: send sampling commands
                 print "sampling started"
+                
+                self.send('CK') # saves setup to RAM and must be second to last command
+                time.sleep(0.5)
+                self.send('CS') # starts deployment and must be the last command
+                time.sleep(0.5)
                 
             else:
                 print "### sending '%s'" % cmd
@@ -203,9 +202,8 @@ class _Direct(object):
 
 # main method.  Accepts input parameters runs the program
 # default host: 'localhost'
-# default port: no default
+# default port: no default, must be specified
 # default basename: "INSTNAME_IPADDR_PORT"
-# default configuration: CONF1
 if __name__ == '__main__':
     if len(sys.argv) <= 1:
         print USAGE
@@ -216,26 +214,17 @@ if __name__ == '__main__':
         host = 'localhost'
         port = int(sys.argv[1])
         basename = "INSTNAME_IPADDR_PORT"
-        configuration = "CONF1"
         
     if len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
         basename = "INSTNAME_IPADDR_PORT"
-        configuration = "CONF1"
-        
-    if len(sys.argv) == 4:
-        host = sys.argv[1]
-        port = int(sys.argv[2])
-        basename = sys.argv[3]
-        configuration = "CONF1"
         
     else:
         host = sys.argv[1]
         port = int(sys.argv[2])
         basename = sys.argv[3]
-        configuration = sys.argv[4] 
 
-    direct = _Direct(host, port, basename, configuration)
+    direct = _Direct(host, port, basename)
     direct.run()
 
