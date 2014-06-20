@@ -24,7 +24,8 @@ dispatch commands from the user. In this "logged" version the script stops any s
 initializes a new sampling program.
 
 Commands accepted: 
-    "initialize,[configuration]" - reconfigures instrument to desired configuration.  Configurations include: K101
+    "initialize,[configuration]" - reconfigures instrument to desired configuration.  Configurations include: B104, I103, E101, D102, K101, E301, D302
+    "status" - prints status and configuration information
     "sample" - initializes sampling
     "q" - closes TCP connection and exits program
 
@@ -91,31 +92,33 @@ class _Direct(object):
         self._bt.start()
         
         # wake and connect to instrument
-        self.send('+++') # wakes instrument **** can you send a string?
-        time.sleep(0.5)
+        self.send('+++\r\n') # wakes instrument 
+        time.sleep(2)
         
-        # initialize system settings
-        # must be first command
-        # calls previous settings until the instrument is reinitialized ****
-        self.send('CR0') # 'CR1' factory default, 'CR0' user default
-        time.sleep(0.5)
+        # set the instruments internal clock
+        timevalue = time.gmtime()
+        self.send('TT'+ time.strftime("%Y/%m/%d,%H:%M:%S" + '\r\n', timevalue))
+        time.sleep(1)
         
         # print status messages
-        self.send('PS0') # output system configuration
-        time.sleep(0.5)
-        self.send('AC') # output active calibration data
-        time.sleep(0.5)
-        self.send('FD') # output fault log **** useful??
-        time.sleep(0.5)
-        self.send('PT200') # 'PT200' runs all tests.  'PT300' runs all tests continuously
+        self.send('PS0\r\n') # output system configuration
+        time.sleep(3)
+        self.send('AC\r\n') # output active calibration data
+        time.sleep(4)
+        self.send('FD\r\n') # output fault log **** useful??
+        time.sleep(2)
+        self.send('PT200\r\n') # 'PT200' runs all tests.  'PT300' runs all tests continuously
+        time.sleep(15)
 
             
         # print possible user commands
         print "### Status checks complete, but not verified"
-        print "### To configure instrument enter 'initialize,[configuration]'"
-        print "### Supported configurations are: 'K101'"
+        print "### To configure instrument enter 'init,[configuration]'"
+        print "### Supported configurations are: 'B104, I103, E101, D102, K101, E301, D302'"
+        print "### To display status and configuration information enter 'status'"
         print "### To start sampling enter 'sample'"
         print "### To close socket and exit program enter 'q'"
+        print "### '+++' will stop sampling"
     
     # Dispatches user commands.    
     def run(self):
@@ -126,63 +129,178 @@ class _Direct(object):
             cmd = cmd.strip()
             cmd1 = cmd.split(",")
             
-            if cmd[0] == "q":
+            if cmd1[0] == "q":
                 print "### exiting"
                 break
             
             # initializes instrument factory default and then to user specified configuration
-            elif cmd[0] == "initialize":
+            elif cmd1[0] == "init":
                 print "### initializing"
                 
                 # initialize system settings
-                self.send('CR1') # 'CR1' factory default, 'CR0' user default
-                time.sleep(0.5)
+                self.send('CR1\r\n') # 'CR1' factory default, 'CR0' user default
+                time.sleep(2)
                 
                 # if no configuration specified print options
                 if len(cmd1) != 2:
-                    print "### must specify configuration.  Enter 'initialize,[configuration]'"
+                    print "### must specify configuration.  Enter 'init,[configuration]'"
                     print "### Supported configurations are: 'K101'"
         
                 # Configures system settings based on specified configuration
                 # TODO: confirm configuration settings
-                if cmd[1] == 'B104':
-                    pass 
-                elif configuration == 'I103':
-                    pass
-                elif configuration == 'E101':
-                    pass
-                elif configuration == 'D102':
-                    pass
-                elif configuration == 'K101':
+                if cmd1[1] == "B104":
+                    print "### configuring B104"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    time.sleep(1)
+                    self.send('WN22\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS400\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "I103":
+                    print "### configuring I103"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN40\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS1600\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "E101":
+                    print "### configuring E101"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN50\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS800\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "D102":
+                    print "### configuring D102"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN20\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS800\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "K101":
                     print "### configuring K101"
-                    self.send('CF11110') # Flow control
-                    time.sleep(0.5)
-                    self.send('CL0') # Don't sleep between pings
-                    time.sleep(0.5)
-                    self.send('ED8000') # transducer depth
-                    time.sleep(0.5)
-                    self.send('EX00111') # coordinate transformation
-                    time.sleep(0.5)
-                    self.send('TE00:00:00.00') # Time per ensemble
-                    time.sleep(0.5)
-                    self.send('WN30') # Number of depth cells
-                    time.sleep(0.5)
-                    self.send('WP1') # Pings per ensemble
-                    time.sleep(0.5)
-                    self.send('WS3200') # Depth cell size
-                    time.sleep(0.5)
-                elif configuration == 'E301':
-                    pass
-                elif configuration == 'D302':
-                    pass 
-                                 
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN30\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS3200\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "E301":
+                    print "### configuring E301"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN50\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS800\r\n') # Depth cell size
+                    time.sleep(1)
+                elif cmd1[1] == "D302":
+                    print "### configuring D302"
+                    self.send('CF11110\r\n') # Flow control
+                    time.sleep(1)
+                    self.send('CL0\r\n') # Don't sleep between pings
+                    time.sleep(1)
+                    self.send('ED8000\r\n') # transducer depth
+                    time.sleep(1)
+                    self.send('EX00111\r\n') # coordinate transformation
+                    time.sleep(1)
+                    self.send('TE00:00:00.00\r\n') # Time per ensemble
+                    time.sleep(1)
+                    self.send('TP00:00.00\r\n') # Time between pings
+                    self.send('WN30\r\n') # Number of depth cells
+                    time.sleep(1)
+                    self.send('WP1\r\n') # Pings per ensemble
+                    time.sleep(1)
+                    self.send('WS800\r\n') # Depth cell size
+                    time.sleep(1) 
+
+            elif cmd1[0] == "status":
+                # print status messages
+                self.send('PS0\r\n') # output system configuration
+                time.sleep(3)
+                self.send('AC\r\n') # output active calibration data
+                time.sleep(4)
+                self.send('FD\r\n') # output fault log
+                time.sleep(2)
+                self.send('PT200\r\n') # 'PT200' runs all tests.  'PT300' runs all tests continuously
+                time.sleep(15)
+            
             elif cmd1[0] == "sample":
                 print "sampling started"
                 
-                self.send('CK') # saves setup to RAM and must be second to last command
-                time.sleep(0.5)
-                self.send('CS') # starts deployment and must be the last command
-                time.sleep(0.5)
+                self.send('CK\r\n') # saves setup to RAM and must be second to last command
+                time.sleep(2)
+                self.send('CS\r\n') # starts deployment and must be the last command
+                time.sleep(2)
                 
             else:
                 print "### sending '%s'" % cmd
@@ -200,7 +318,7 @@ class _Direct(object):
         c = os.write(self._sock.fileno(), s)
         return c
 
-# main method.  Accepts input parameters runs the program
+# main method.  Accepts command line input parameters and runs the program
 # default host: 'localhost'
 # default port: no default, must be specified
 # default basename: "INSTNAME_IPADDR_PORT"
@@ -209,13 +327,12 @@ if __name__ == '__main__':
         print USAGE
         exit()
     
-    # TODO: may be possible to do this more cleanly with default values in the init function of direct
-    if len(sys.argv) == 2:
+    elif len(sys.argv) == 2:
         host = 'localhost'
         port = int(sys.argv[1])
         basename = "INSTNAME_IPADDR_PORT"
         
-    if len(sys.argv) == 3:
+    elif len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
         basename = "INSTNAME_IPADDR_PORT"
